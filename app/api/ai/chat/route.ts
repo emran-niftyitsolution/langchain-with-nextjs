@@ -2,7 +2,7 @@
 import connectDB from "@/lib/mongodb";
 import { parseQueryToFilters } from "@/lib/parseQueryToFilters";
 import User from "@/models/User";
-import { HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -56,7 +56,7 @@ async function handleCreate(userData: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message } = await request.json();
+    const { message, history } = await request.json();
     if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
     const apiKey = process.env.NEXT_PUBLIC_AZURE_OPENAI_API_KEY;
@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
               updates: {
                 type: "object",
                 properties: {
+                  name: { type: "string" },
                   email: { type: "string" },
                   role: { type: "string" },
                   department: { type: "string" },
@@ -154,8 +155,16 @@ export async function POST(request: NextRequest) {
     
     const fullSystemPrompt = `${systemPrompt}\n\nExisting Roles: ${existingRoles.join(", ")}\nExisting Departments: ${existingDepartments.join(", ")}`;
     
+    // Convert history to LangChain messages
+    const historyMessages = (history || []).map((msg: any) => {
+      if (msg.role === "user") return new HumanMessage(msg.content);
+      if (msg.role === "assistant") return new AIMessage(msg.content);
+      return new HumanMessage(msg.content); // Default to HumanMessage if role is unknown
+    });
+
     let messages: any[] = [
       new SystemMessage(fullSystemPrompt),
+      ...historyMessages,
       new HumanMessage(message)
     ];
 

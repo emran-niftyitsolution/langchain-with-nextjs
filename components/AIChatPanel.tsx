@@ -62,7 +62,10 @@ export default function AIChatPanel({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ 
+          message: input,
+          history: messages.slice(-10) // Send last 10 messages (roughly 5 chats)
+        }),
       });
 
       const data = await response.json();

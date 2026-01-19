@@ -170,7 +170,7 @@ export default function UsersPage({
         onCancel={handleModalClose}
         title={editingUser ? "Edit User" : "Create New User"}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <CreateUserForm
           initialValues={editingUser}
