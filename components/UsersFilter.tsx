@@ -1,5 +1,5 @@
 
-import { Button, Col, Input, Row, Select } from "antd";
+import { Button, Input, Select } from "antd";
 import { useEffect, useState } from "react";
 
 export interface FilterState {
@@ -76,9 +76,9 @@ export default function UsersFilter({
     filters.maxAge;
 
   const filterContent = (
-    <Row gutter={[16, 16]}>
+    <div className="grid grid-cols-1 gap-4">
       {/* Name */}
-      <Col span={24}>
+      <div>
         <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
           Name
         </label>
@@ -88,10 +88,10 @@ export default function UsersFilter({
           placeholder="Search by name..."
           allowClear
         />
-      </Col>
+      </div>
 
       {/* Email */}
-      <Col span={24}>
+      <div>
         <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
           Email
         </label>
@@ -101,10 +101,10 @@ export default function UsersFilter({
           placeholder="Search by email..."
           allowClear
         />
-      </Col>
+      </div>
 
       {/* Phone */}
-      <Col span={24}>
+      <div>
         <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
           Phone
         </label>
@@ -114,10 +114,10 @@ export default function UsersFilter({
           placeholder="Search by phone number..."
           allowClear
         />
-      </Col>
+      </div>
 
       {/* Role */}
-      <Col span={24}>
+      <div>
         <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
           Role
         </label>
@@ -126,14 +126,14 @@ export default function UsersFilter({
           value={filters.role}
           onChange={(val) => handleFilterChange("role", val)}
           placeholder="Select Roles"
-          style={{ width: "100%" }}
+          className="w-full"
           allowClear
           options={availableRoles.map(role => ({ label: role, value: role }))}
         />
-      </Col>
+      </div>
 
       {/* Department */}
-      <Col span={24}>
+      <div>
         <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
           Department
         </label>
@@ -142,42 +142,44 @@ export default function UsersFilter({
           value={filters.department}
           onChange={(val) => handleFilterChange("department", val)}
           placeholder="Select Departments"
-          style={{ width: "100%" }}
+          className="w-full"
           allowClear
           options={availableDepartments.map(dept => ({ label: dept, value: dept }))}
         />
-      </Col>
+      </div>
 
-      {/* Min Age */}
-      <Col span={24}>
-        <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-          Min Age
-        </label>
-        <Input
-          type="number"
-          value={filters.minAge}
-          onChange={(e) => handleFilterChange("minAge", e.target.value)}
-          min={0}
-          placeholder="Minimum age"
-          style={{ width: "100%" }}
-        />
-      </Col>
+      <div className="grid grid-cols-2 gap-4">
+        {/* Min Age */}
+        <div>
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
+            Min Age
+          </label>
+          <Input
+            type="number"
+            value={filters.minAge}
+            onChange={(e) => handleFilterChange("minAge", e.target.value)}
+            min={0}
+            placeholder="Min"
+            className="w-full"
+          />
+        </div>
 
-      {/* Max Age */}
-      <Col span={24}>
-        <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-          Max Age
-        </label>
-        <Input
-          type="number"
-          value={filters.maxAge}
-          onChange={(e) => handleFilterChange("maxAge", e.target.value)}
-          min={0}
-          placeholder="Maximum age"
-          style={{ width: "100%" }}
-        />
-      </Col>
-    </Row>
+        {/* Max Age */}
+        <div>
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
+            Max Age
+          </label>
+          <Input
+            type="number"
+            value={filters.maxAge}
+            onChange={(e) => handleFilterChange("maxAge", e.target.value)}
+            min={0}
+            placeholder="Max"
+            className="w-full"
+          />
+        </div>
+      </div>
+    </div>
   );
 
   return (

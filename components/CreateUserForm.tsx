@@ -1,5 +1,5 @@
 
-import { Alert, Button, Col, Form, Input, InputNumber, Row } from "antd";
+import { Alert, Button, Form, Input, InputNumber } from "antd";
 import { useEffect, useState } from "react";
 
 export interface UserFormData {
@@ -85,83 +85,94 @@ export default function UserForm({
   return (
     <Form
       form={form}
-      layout="vertical"
       onFinish={onFinish}
       disabled={loading}
       initialValues={initialValues}
+      className="space-y-4"
     >
-      <Row gutter={16}>
-        <Col span={12}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Name <span className="text-red-500">*</span>
+          </label>
           <Form.Item
             name="name"
-            label="Name"
+            noStyle
             rules={[{ required: true, message: 'Please enter name' }]}
           >
-            <Input placeholder="Enter name" />
+            <Input placeholder="Enter name" className="w-full" />
           </Form.Item>
-        </Col>
-        <Col span={12}>
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Email <span className="text-red-500">*</span>
+          </label>
           <Form.Item
             name="email"
-            label="Email"
+            noStyle
             rules={[
               { required: true, message: 'Please enter email' },
               { type: 'email', message: 'Please enter a valid email' }
             ]}
           >
-            <Input placeholder="Enter email" />
+            <Input placeholder="Enter email" className="w-full" />
           </Form.Item>
-        </Col>
-      </Row>
+        </div>
+      </div>
 
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="phone"
-            label="Phone"
-          >
-            <Input placeholder="Enter phone number" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Phone
+          </label>
+          <Form.Item name="phone" noStyle>
+            <Input placeholder="Enter phone number" className="w-full" />
           </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="age"
-            label="Age"
-          >
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Age
+          </label>
+          <Form.Item name="age" noStyle>
             <InputNumber 
-              style={{ width: '100%' }} 
+              className="w-full" 
               min={0} 
               placeholder="Enter age" 
             />
           </Form.Item>
-        </Col>
-      </Row>
+        </div>
+      </div>
 
-      <Form.Item
-        name="address"
-        label="Address"
-      >
-        <Input.TextArea rows={3} placeholder="Enter address" />
-      </Form.Item>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+          Address
+        </label>
+        <Form.Item name="address" noStyle>
+          <Input.TextArea rows={3} placeholder="Enter address" className="w-full" />
+        </Form.Item>
+      </div>
 
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="role"
-            label="Role"
-          >
-            <Input placeholder="e.g. Developer" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Role
+          </label>
+          <Form.Item name="role" noStyle>
+            <Input placeholder="e.g. Developer" className="w-full" />
           </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="department"
-            label="Department"
-          >
-            <Input placeholder="e.g. Engineering" />
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Department
+          </label>
+          <Form.Item name="department" noStyle>
+            <Input placeholder="e.g. Engineering" className="w-full" />
           </Form.Item>
-        </Col>
-      </Row>
+        </div>
+      </div>
 
       {error && (
         <Alert

@@ -114,10 +114,10 @@ export default function UsersPage({
   }, [pendingAction, onActionComplete]);
 
   return (
-    <div className="flex h-full w-full bg-zinc-50 dark:bg-black">
-      {/* Sidebar - Fixed Height/Scrollable */}
-      <div className="w-80 flex-shrink-0 h-full bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 overflow-y-auto">
-        <div className="p-6">
+    <div className="flex flex-col md:flex-row h-full w-full bg-zinc-50 dark:bg-black overflow-hidden">
+      {/* Filters Section - Top on mobile, Sidebar on desktop */}
+      <div className="w-full md:w-80 flex-shrink-0 bg-white dark:bg-zinc-900 border-b md:border-b-0 md:border-r border-zinc-200 dark:border-zinc-800 overflow-y-auto max-h-[40vh] md:max-h-full">
+        <div className="p-4 md:p-6">
           <UsersFilter
             onFilterChange={onFiltersChange}
             availableRoles={availableRoles}
@@ -127,15 +127,15 @@ export default function UsersPage({
         </div>
       </div>
 
-      {/* Main Content - Independent Scroll */}
-      <div className="flex-1 h-full overflow-y-auto">
-        <div className="p-8 max-w-[1600px] mx-auto w-full">
-          <div className="mb-8 flex items-center justify-between">
+      {/* Main Content - Takes remaining space */}
+      <div className="flex-1 h-full overflow-y-auto min-w-0">
+        <div className="p-4 md:p-8 max-w-[1600px] mx-auto w-full">
+          <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-1 md:mb-2">
                 Users Management
               </h1>
-              <p className="text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm md:text-base text-zinc-600 dark:text-zinc-400">
                 Create and manage users in the system
               </p>
             </div>
@@ -144,23 +144,26 @@ export default function UsersPage({
               icon={<PlusOutlined />}
               size="large"
               onClick={() => setIsModalOpen(true)}
+              className="w-full sm:w-auto"
             >
               Create User
             </Button>
           </div>
 
-          <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 shadow-sm overflow-hidden">
+            <h2 className="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
               Users List
             </h2>
-            <UsersTable 
-              refreshKey={refreshKey} 
-              filters={filters} 
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              pendingAction={pendingAction}
-              onActionComplete={onActionComplete}
-            />
+            <div className="overflow-x-auto">
+              <UsersTable 
+                refreshKey={refreshKey} 
+                filters={filters} 
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                pendingAction={pendingAction}
+                onActionComplete={onActionComplete}
+              />
+            </div>
           </div>
         </div>
       </div>

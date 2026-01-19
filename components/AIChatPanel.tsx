@@ -1,5 +1,5 @@
 import { CloseOutlined, SendOutlined } from "@ant-design/icons";
-import { Button, Input, Spin } from "antd";
+import { Button, Input, Space, Spin } from "antd";
 import { useEffect, useRef, useState } from "react";
 import { FilterState } from "./UsersFilter";
 
@@ -32,12 +32,40 @@ export default function AIChatPanel({
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hi! I can help you filter users. Try asking: 'Show all users with age max 40' or 'Find users in Engineering department'",
+      content: "Hi! I can help you manage users. Try asking: 'Show all users with age max 40' or 'Update Daryl Tanner's age to 53'",
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load history from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("ai_chat_history");
+    if (saved) {
+      try {
+        setMessages(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse chat history");
+      }
+    }
+  }, []);
+
+  // Save history to localStorage
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem("ai_chat_history", JSON.stringify(messages.slice(-20)));
+    }
+  }, [messages]);
+
+  const clearChat = () => {
+    const initialMessage: Message = {
+      role: "assistant",
+      content: "Hi! I can help you manage users. Try asking: 'Show all users with age max 40' or 'Update Daryl Tanner's age to 53'",
+    };
+    setMessages([initialMessage]);
+    localStorage.removeItem("ai_chat_history");
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -85,9 +113,9 @@ export default function AIChatPanel({
         onFilterApply(data.filters);
       }
 
-      // If action was requested
-      if (data.action && onAction) {
-        onAction(data.action);
+      // If database was modified, trigger refresh
+      if (data.refresh && onRefresh) {
+        onRefresh();
       }
     } catch (error) {
       const errorMessage: Message = {
@@ -103,10 +131,13 @@ export default function AIChatPanel({
   if (!isOpen) return null;
 
   return (
-    <div className="flex flex-col h-full w-96 bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 flex-shrink-0">
+    <div className="fixed inset-0 z-50 md:relative md:inset-auto md:z-0 flex flex-col h-full w-full md:w-96 bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 flex-shrink-0 animate-in slide-in-from-right duration-300">
       <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
         <h3 className="font-semibold text-lg text-zinc-900 dark:text-zinc-100">AI Assistant</h3>
-        <Button type="text" onClick={onClose} icon={<CloseOutlined />} />
+        <Space>
+          <Button type="text" size="small" onClick={clearChat}>Clear</Button>
+          <Button type="text" onClick={onClose} icon={<CloseOutlined />} />
+        </Space>
       </div>
 
       <div className="flex-1 flex flex-col p-4 overflow-hidden">

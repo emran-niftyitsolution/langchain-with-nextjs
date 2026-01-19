@@ -140,10 +140,12 @@ export function parseQueryToFilters(
   // Checking exclusion: if a term matches a role/dept, don't use it as name?
   // Complex. For now, specific  // Extract name or email from general search context
   const searchPatterns = [
-    /(?:find|show|get|list|search)\s+(?:users?\s+)?(?:named|with\s+name|called)\s+(.+?)(?:\s+with|\s+in|\s+that|$)/i,
-    /(?:find|show|get|list|search)\s+(?:users?\s+)?(?:with\s+email|email)\s+(.+?)(?:\s+with|\s+in|\s+that|$)/i,
+    /(?:find|show|get|list|search|filter|give(?:\s+me)?|who\s+is)\s+(?:users?\s+)?(?:named|with\s+name|called|about)\s+(.+?)(?:\s+with|\s+in|\s+that|\s+info|$)/i,
+    /(?:find|show|get|list|search|filter|give(?:\s+me)?|who\s+is)\s+(?:users?\s+)?(?:with\s+email|email)\s+(.+?)(?:\s+with|\s+in|\s+that|\s+info|$)/i,
+    // Capture "[Name] user info" or "info about [Name]"
+    /\b(.+?)\s+(?:user\s+info|info)\b/i,
     // Negative lookahead to avoid capturing "that roles...", "whose department..." as name
-    /(?:find|show|get|list|search)\s+(?:users?\s+)?(?!that\b|who\b|whose\b|where\b|roles?\b|departments?\b)(.+?)(?:\s+with|\s+in|\s+that|$)/i,
+    /(?:find|show|get|list|search|filter|give(?:\s+me)?|who\s+is)\s+(?:users?\s+)?(?!that\b|who\b|whose\b|where\b|roles?\b|departments?\b)(.+?)(?:\s+with|\s+in|\s+that|\s+info|$)/i,
   ];
 
   for (let i = 0; i < searchPatterns.length; i++) {
