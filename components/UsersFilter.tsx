@@ -10,6 +10,8 @@ export interface FilterState {
   department: string[];
   minAge: string;
   maxAge: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 interface UsersFilterProps {

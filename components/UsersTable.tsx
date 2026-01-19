@@ -81,6 +81,8 @@ export default function UsersTable({
           params.append("department", filters.department.join(","));
         if (filters.minAge) params.append("minAge", filters.minAge);
         if (filters.maxAge) params.append("maxAge", filters.maxAge);
+        if (filters.sortBy) params.append("sortBy", filters.sortBy);
+        if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
       }
 
       const queryString = params.toString();

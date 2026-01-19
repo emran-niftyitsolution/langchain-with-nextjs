@@ -181,5 +181,44 @@ export function parseQueryToFilters(
     }
   }
 
+  // Extract sort filters
+  const sortPatterns = [
+    /(?:sort|order|arrange)\s+(?:by|according\s+to|with)\s+([a-z]+)\s*(asc|desc|ascending|descending)?/i,
+    /(?:show|list)\s+users?\s+(?:sorted|ordered)\s+(?:by|according\s+to|with)\s+([a-z]+)\s*(asc|desc|ascending|descending)?/i,
+  ];
+
+  let sortFound = false;
+  for (const pattern of sortPatterns) {
+    const match = lowerQuery.match(pattern);
+    if (match) {
+      const field = match[1].toLowerCase();
+      const validFields = ['name', 'email', 'age', 'role', 'department', 'createdAt'];
+      if (validFields.includes(field)) {
+        filters.sortBy = field;
+        const order = match[2];
+        if (order) {
+          filters.sortOrder = order.toLowerCase().startsWith('desc') ? 'desc' : 'asc';
+        } else {
+          filters.sortOrder = (field === 'createdAt' || field === 'age') ? 'desc' : 'asc';
+        }
+        sortFound = true;
+        break;
+      }
+    }
+  }
+
+  if (!sortFound) {
+    if (lowerQuery.includes('newest') || lowerQuery.includes('latest')) {
+      filters.sortBy = 'createdAt';
+      filters.sortOrder = 'desc';
+    } else if (lowerQuery.includes('oldest')) {
+      filters.sortBy = 'createdAt';
+      filters.sortOrder = 'asc';
+    } else if (lowerQuery.includes('youngest')) {
+      filters.sortBy = 'age';
+      filters.sortOrder = 'asc';
+    }
+  }
+
   return filters;
 }

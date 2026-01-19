@@ -14,6 +14,11 @@ You have tools to manage users directly in the database.
 
 When a user asks to modify data, use the appropriate tool. 
 After a tool is called, summarize the result to the user.
+
+You can also sort the user list:
+- Examples: "sort by age descending", "show newest users", "sort by name", "youngest users first".
+Valid sort fields: name, email, age, role, department, createdAt.
+
 Always be helpful and conversational.`;
 
 async function handleUpdate(nameQuery: string, updates: any) {

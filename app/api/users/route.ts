@@ -59,7 +59,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const users = await User.find(filter).sort({ createdAt: -1 });
+    // Sorting
+    const sortBy = searchParams.get("sortBy") || "createdAt";
+    const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+    const sortOptions: Record<string, any> = { [sortBy]: sortOrder };
+
+    const users = await User.find(filter).sort(sortOptions);
     return NextResponse.json({ users }, { status: 200 });
   } catch (error) {
     console.error("Error fetching users:", error);
