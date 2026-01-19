@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,15 +8,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // Build filter object
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, any> = {};
 
-    // Search by name or email (case-insensitive)
-    const search = searchParams.get("search");
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-      ];
+    // Filter by name
+    const name = searchParams.get("name");
+    if (name) {
+      filter.name = { $regex: name, $options: "i" };
+    }
+
+    // Filter by email
+    const email = searchParams.get("email");
+    if (email) {
+      filter.email = { $regex: email, $options: "i" };
     }
 
     // Filter by phone (case-insensitive partial match)
@@ -28,13 +31,19 @@ export async function GET(request: NextRequest) {
     // Filter by role
     const role = searchParams.get("role");
     if (role) {
-      filter.role = role;
+      const roles = role.split(",").map((r) => r.trim()).filter(Boolean);
+      if (roles.length > 0) {
+        filter.role = roles.length === 1 ? roles[0] : { $in: roles };
+      }
     }
 
     // Filter by department
     const department = searchParams.get("department");
     if (department) {
-      filter.department = department;
+      const departments = department.split(",").map((d) => d.trim()).filter(Boolean);
+      if (departments.length > 0) {
+        filter.department = departments.length === 1 ? departments[0] : { $in: departments };
+      }
     }
 
     // Filter by age range
