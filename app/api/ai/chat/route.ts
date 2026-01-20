@@ -9,12 +9,19 @@ import { z } from "zod";
 
 const systemPrompt = `
 # ROLE: EXPERT USER DATABASE ADMINISTRATOR
-You are a precision-oriented AI assistant specialized in managing user data within a Production User Management System. Your primary mission is to execute database operations (Create, Read, Update, Delete) with 100% accuracy and zero hallucination.
+You are a precision-oriented AI assistant specialized in managing user data.
 
 # PRIMARY OBJECTIVES:
-1. **Purity of Intent:** Map user requests to the most efficient tool without adding unrequested filters.
+1. **Purity of Intent:** Map user requests to the most efficient tool.
 2. **Data Integrity:** Only modify or delete records after unique identification.
-3. **Natural Synthesis:** Summarize technical tool outputs into human-friendly, professional responses.
+3. **Natural Synthesis:** Summarize tool outputs into human-friendly responses.
+
+# UNRELATED CONTENT GUARDRAIL:
+If the user's message is unrelated to user management, database records, search, or system operations (e.g., general talk, jokes, weather, etc.):
+- **DO NOT** attempt to use any tools.
+- **DO NOT** try to interpret it as a filter.
+- **RESPONSE:** Provide a friendly "Sample Message" that briefly explains what you *can* do. 
+- *Example Response:* "I specialize in managing your user database. I can help you find specific users (e.g., 'Show all admins'), update records (e.g., 'Change John's role to Developer'), or create new profiles. How can I help you with your data today?"
 
 # OPERATIONAL GUIDELINES:
 
@@ -62,6 +69,7 @@ const filterSchema = z.object({
   sortBy: z.enum(['name', 'email', 'age', 'role', 'department', 'createdAt']).optional().describe("Field to sort by"),
   sortOrder: z.enum(['asc', 'desc']).optional().describe("Sort direction"),
   shouldReset: z.boolean().optional().describe("Whether to clear existing filters before applying these (use if the new request conflicts with or replaces the current context)"),
+  unrelated: z.boolean().optional().describe("Set to true if the message is off-topic or unrelated to database/user management"),
 });
 
 const filterParser = StructuredOutputParser.fromZodSchema(filterSchema);
@@ -78,14 +86,16 @@ Extract structured search criteria from user messages for a database lookup.
 - Current Filters: ${JSON.stringify(currentFilters || {})}
 
 # EXTRACTION LOGIC:
-1. **Intent Gate:** If the message is a command to CREATE, UPDATE, or DELETE, extraction MUST result in an empty object {}.
-2. **Conflict Detection:** Analyze the "Current Filters". If the new search request logically replaces or conflicts with them (e.g., searching for a different user name, a different role without saying "also", or starting a clearly new search topic), set "shouldReset": true.
-3. **Normalization:** Map user roles/depts to the "Available" list.
+1. **Context Guardrail:** Determine if the message is related to user management, database records, search filters, or system state. If the user is asking about something completely unrelated (e.g., "how is the weather", "tell me a joke", or just general chat), extraction MUST return { "unrelated": true }.
+2. **Intent Gate:** If the message is a command to CREATE, UPDATE, or DELETE, extraction MUST result in an empty object {}.
+3. **Conflict Detection:** Analyze the "Current Filters". If the new search request logically replaces or conflicts with them (e.g., searching for a different user name, a different role without saying "also", or starting a clearly new search topic), set "shouldReset": true.
+4. **Normalization:** Map user roles/depts to the "Available" list.
 
 # FEW-SHOT EXAMPLES:
 - User: "Find active admins" -> { "role": ["Admin"], "shouldReset": true }
 - User: "Whos over age 50?" (when Current Filters has name="John") -> { "minAge": "50", "shouldReset": true }
 - User: "Also include HR department" (when Current Filters has role=["Developer"]) -> { "department": ["HR"], "shouldReset": false }
+- User: "What is your favorite color?" -> { "unrelated": true }
 
 # MESSAGE FOR ANALYSIS:
 "{message}"
@@ -104,7 +114,10 @@ Extract structured search criteria from user messages for a database lookup.
     if (Object.keys(parsed).length === 0) return null;
     
     // Extract shouldReset and clean the filters object
-    const { shouldReset, ...filters } = parsed;
+    const { shouldReset, unrelated, ...filters } = parsed;
+    
+    if (unrelated) return { filters: {}, shouldReset: false, unrelated: true };
+    
     return { filters: Object.keys(filters).length > 0 ? filters : {}, shouldReset: !!shouldReset };
   } catch (e) {
     console.error("Filter extraction error:", e);
@@ -315,10 +328,15 @@ export async function POST(request: NextRequest) {
           const filterResult = refresh ? null : await extractFiltersWithLangChain(message, existingRoles, existingDepartments, currentFilters, chatModel);
           const filters = filterResult?.filters;
           const shouldReset = filterResult?.shouldReset;
+          const isUnrelated = filterResult?.unrelated;
+
+          if (isUnrelated) {
+            messages.push(new SystemMessage("SYSTEM NOTE: The user has asked an off-topic question. Respond with your 'Sample Message' describing what you can do."));
+          }
           
           sendStatus("Generating response...");
           // Send final metadata
-          controller.enqueue(encoder.encode(JSON.stringify({ filters, shouldReset, refresh, metadata: true }) + "\n"));
+          controller.enqueue(encoder.encode(JSON.stringify({ filters: filters || {}, shouldReset, refresh, metadata: true }) + "\n"));
 
           // Final streaming of AI content
           const aiStream = await chatModel.stream(messages);
