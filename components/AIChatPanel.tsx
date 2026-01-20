@@ -50,11 +50,12 @@ export default function AIChatPanel({
   });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Save history to localStorage whenever messages change
   useEffect(() => {
-    localStorage.setItem("ai_chat_history", JSON.stringify(messages.slice(-100)));
+    localStorage.setItem("ai_chat_history", JSON.stringify(messages.slice(-20)));
   }, [messages]);
 
   const clearChat = () => {
@@ -82,6 +83,7 @@ export default function AIChatPanel({
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
+    setStatus("Connecting...");
 
     try {
       const response = await fetch("/api/ai/chat", {
@@ -91,30 +93,71 @@ export default function AIChatPanel({
         },
         body: JSON.stringify({ 
           message: input,
-          history: messages.slice(-100) // Send last 100 messages
+          history: messages.slice(-20)
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || "Failed to process request");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to process request");
       }
 
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.response,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
 
-      // If filters were extracted, apply them
-      if (data.filters) {
-        onFilterApply(data.filters);
-      }
+      const decoder = new TextDecoder();
+      let assistantMessageContent = "";
+      let metadataParsed = false;
+      let buffer = "";
 
-      // If database was modified, trigger refresh
-      if (data.refresh && onRefresh) {
-        onRefresh();
+      // Add placeholder for assistant message
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        // Process all complete lines in the buffer until metadata is found
+        while (!metadataParsed && buffer.includes("\n")) {
+          const newlineIndex = buffer.indexOf("\n");
+          const line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+          
+          try {
+            const data = JSON.parse(line);
+            if (data.status) {
+              setStatus(data.status);
+            }
+            if (data.metadata) {
+              if (data.filters) onFilterApply(data.filters);
+              if (data.refresh && onRefresh) onRefresh();
+              metadataParsed = true;
+              setStatus(""); // Clear status when content starts
+            }
+          } catch (e) {
+            // If it's not JSON but we're still looking for metadata, ignore or treat as error
+            console.error("Failed to parse line", e);
+          }
+        }
+
+        if (metadataParsed) {
+          // Once metadata is parsed, the rest of the buffer and future chunks are content
+          const contentChunk = buffer;
+          buffer = ""; // Clear buffer so we only process new chunks
+          assistantMessageContent += contentChunk;
+
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const lastMessage = newMessages[newMessages.length - 1];
+            if (lastMessage.role === "assistant") {
+              lastMessage.content = assistantMessageContent;
+            }
+            return [...newMessages];
+          });
+        }
       }
     } catch (error) {
       const errorMessage: Message = {
@@ -124,6 +167,7 @@ export default function AIChatPanel({
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
+      setStatus("");
     }
   };
 
@@ -161,8 +205,9 @@ export default function AIChatPanel({
           ))}
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 dark:bg-zinc-800 rounded-lg px-4 py-2">
+              <div className="bg-gray-100 dark:bg-zinc-800 rounded-lg px-4 py-3 flex items-center gap-3">
                 <Spin size="small" />
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">{status || "Thinking..."}</span>
               </div>
             </div>
           )}
