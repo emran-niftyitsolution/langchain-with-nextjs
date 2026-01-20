@@ -1,6 +1,6 @@
 "use client";
 
-import { PlusOutlined } from "@ant-design/icons";
+import { CloseOutlined, FilterOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Modal } from "antd";
 import { useEffect, useState } from "react";
 import { AIAction } from "./AIChatPanel";
@@ -34,6 +34,7 @@ export default function UsersPage({
   const [editingUser, setEditingUser] = useState<any>(null);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [availableDepartments, setAvailableDepartments] = useState<string[]>([]);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   const handleUserSaved = () => {
     if (onRefresh) onRefresh();
@@ -114,10 +115,32 @@ export default function UsersPage({
   }, [pendingAction, onActionComplete]);
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full bg-zinc-50 dark:bg-black overflow-hidden">
-      {/* Filters Section - Top on mobile, Sidebar on desktop */}
-      <div className="w-full md:w-80 flex-shrink-0 bg-white dark:bg-zinc-900 border-b md:border-b-0 md:border-r border-zinc-200 dark:border-zinc-800 overflow-y-auto max-h-[40vh] md:max-h-full">
-        <div className="p-4 md:p-6">
+    <div className="flex flex-col md:flex-row h-full w-full bg-zinc-50 dark:bg-black overflow-hidden relative">
+      {/* Overlay for mobile filter drawer */}
+      {isFilterDrawerOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsFilterDrawerOpen(false)}
+        />
+      )}
+
+      {/* Filters Section - Drawer on mobile, Sidebar on desktop */}
+      <div className={`
+        fixed md:relative inset-y-0 left-0 z-50 md:z-auto
+        w-80 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 
+        transform ${isFilterDrawerOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
+        transition-transform duration-300 ease-in-out
+        flex flex-col overflow-hidden
+      `}>
+        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between md:hidden">
+          <h3 className="font-semibold text-lg">Filters</h3>
+          <Button 
+            type="text" 
+            icon={<CloseOutlined />} 
+            onClick={() => setIsFilterDrawerOpen(false)} 
+          />
+        </div>
+        <div className="p-6 overflow-y-auto flex-1">
           <UsersFilter
             onFilterChange={onFiltersChange}
             availableRoles={availableRoles}
@@ -131,13 +154,22 @@ export default function UsersPage({
       <div className="flex-1 h-full overflow-y-auto min-w-0">
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto w-full">
           <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-1 md:mb-2">
-                Users Management
-              </h1>
-              <p className="text-sm md:text-base text-zinc-600 dark:text-zinc-400">
-                Create and manage users in the system
-              </p>
+            <div className="flex items-center justify-between w-full sm:w-auto">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-1 md:mb-2">
+                  Users Management
+                </h1>
+                <p className="text-sm md:text-base text-zinc-600 dark:text-zinc-400">
+                  Create and manage users
+                </p>
+              </div>
+              <Button
+                className="md:hidden"
+                icon={<FilterOutlined />}
+                onClick={() => setIsFilterDrawerOpen(true)}
+              >
+                Filters
+              </Button>
             </div>
             <Button
               type="primary"
