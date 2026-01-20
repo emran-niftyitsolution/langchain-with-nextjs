@@ -163,13 +163,14 @@ export default function UsersPage({
                   Create and manage users
                 </p>
               </div>
-              <Button
-                className="md:hidden"
-                icon={<FilterOutlined />}
-                onClick={() => setIsFilterDrawerOpen(true)}
-              >
-                Filters
-              </Button>
+              <div className="md:hidden">
+                <Button
+                  icon={<FilterOutlined />}
+                  onClick={() => setIsFilterDrawerOpen(true)}
+                >
+                  Filters
+                </Button>
+              </div>
             </div>
             <Button
               type="primary"
