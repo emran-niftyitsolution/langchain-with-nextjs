@@ -1,4 +1,4 @@
-import { CloseOutlined, SendOutlined } from "@ant-design/icons";
+import { CloseOutlined, SendOutlined, StopOutlined } from "@ant-design/icons";
 import { Button, Input, Space, Spin } from "antd";
 import { useEffect, useRef, useState } from "react";
 import { FilterState } from "./UsersFilter";
@@ -32,7 +32,6 @@ export default function AIChatPanel({
   currentFilters,
 }: AIChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>(() => {
-    // Initialize from localStorage directly to avoid race condition
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("ai_chat_history");
       if (saved) {
@@ -54,8 +53,8 @@ export default function AIChatPanel({
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Save history to localStorage whenever messages change
   useEffect(() => {
     localStorage.setItem("ai_chat_history", JSON.stringify(messages.slice(-20)));
   }, [messages]);
@@ -75,7 +74,15 @@ export default function AIChatPanel({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isOpen]);
+  }, [messages, isOpen, status, loading]);
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setLoading(false);
+      setStatus("");
+    }
+  };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -86,6 +93,8 @@ export default function AIChatPanel({
     setInput("");
     setLoading(true);
     setStatus("Connecting...");
+
+    abortControllerRef.current = new AbortController();
 
     try {
       const response = await fetch("/api/ai/chat", {
@@ -98,6 +107,7 @@ export default function AIChatPanel({
           history: messages.slice(-20),
           currentFilters: currentFilters
         }),
+        signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
@@ -113,7 +123,6 @@ export default function AIChatPanel({
       let metadataParsed = false;
       let buffer = "";
 
-      // Add placeholder for assistant message
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       while (true) {
@@ -123,7 +132,6 @@ export default function AIChatPanel({
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
 
-        // Process all complete lines in the buffer until metadata is found
         while (!metadataParsed && buffer.includes("\n")) {
           const newlineIndex = buffer.indexOf("\n");
           const line = buffer.slice(0, newlineIndex);
@@ -138,18 +146,16 @@ export default function AIChatPanel({
               if (data.filters) onFilterApply(data.filters, data.shouldReset);
               if (data.refresh && onRefresh) onRefresh();
               metadataParsed = true;
-              setStatus(""); // Clear status when content starts
+              setStatus("");
             }
           } catch (e) {
-            // If it's not JSON but we're still looking for metadata, ignore or treat as error
             console.error("Failed to parse line", e);
           }
         }
 
         if (metadataParsed) {
-          // Once metadata is parsed, the rest of the buffer and future chunks are content
           const contentChunk = buffer;
-          buffer = ""; // Clear buffer so we only process new chunks
+          buffer = "";
           assistantMessageContent += contentChunk;
 
           setMessages((prev) => {
@@ -162,15 +168,27 @@ export default function AIChatPanel({
           });
         }
       }
-    } catch (error) {
-      const errorMessage: Message = {
-        role: "assistant",
-        content: `Error: ${error instanceof Error ? error.message : "Something went wrong"}`,
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          if (lastMessage.role === "assistant" && !lastMessage.content) {
+            return newMessages.slice(0, -1);
+          }
+          return newMessages;
+        });
+      } else {
+        const errorMessage: Message = {
+          role: "assistant",
+          content: `Error: ${error instanceof Error ? error.message : "Something went wrong"}`,
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      }
     } finally {
       setLoading(false);
       setStatus("");
+      abortControllerRef.current = null;
     }
   };
 
@@ -224,15 +242,21 @@ export default function AIChatPanel({
               onChange={(e) => setInput(e.target.value)}
               onPressEnter={() => handleSubmit()}
               placeholder="Ask about users..."
-              disabled={loading}
             />
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={() => handleSubmit()}
-              loading={loading}
-              disabled={!input.trim()}
-            />
+            {loading ? (
+              <Button
+                danger
+                icon={<StopOutlined />}
+                onClick={handleStop}
+              />
+            ) : (
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={() => handleSubmit()}
+                disabled={!input.trim()}
+              />
+            )}
           </div>
         </div>
       </div>
