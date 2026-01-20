@@ -77,9 +77,13 @@ const filterParser = StructuredOutputParser.fromZodSchema(filterSchema);
 
 async function extractFiltersWithLangChain(message: string, existingRoles: string[], existingDepartments: string[], model: ChatOpenAI) {
   try {
-    const prompt = `Extract user search filters from the following message.
-Only extract filters that are explicitly requested.
-If no filters are found, return an empty object.
+    const prompt = `You are a filter extraction assistant. Your task is to extract structured search filters from a user's message ONLY if they want to VIEW, FIND, or LIST users.
+
+### IMPORTANT RULES:
+1. If the user's primary intent is to CREATE, UPDATE, or DELETE a user (e.g., "Update John's age", "Delete Alice"), DO NOT extract any filters. Return an empty object {}.
+2. Only extract filters that are EXPLICITLY mentioned as search criteria.
+3. If no search criteria are found, return an empty object {}.
+4. Do not include names or emails in filters unless the user is specifically asking to FIND someone by that name/email.
 
 Available Roles: ${existingRoles.join(", ")}
 Available Departments: ${existingDepartments.join(", ")}
@@ -93,10 +97,13 @@ Message: {message}
     
     // The model might return a string in JSON format, parse it
     const content = typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
-    return await filterParser.parse(content);
+    const parsed = await filterParser.parse(content);
+    
+    // Return null if empty to avoid triggering filter updates in the UI
+    return Object.keys(parsed).length === 0 ? null : parsed;
   } catch (e) {
     console.error("Filter extraction error:", e);
-    return {};
+    return null;
   }
 }
 
@@ -300,7 +307,7 @@ export async function POST(request: NextRequest) {
             messages.push(...toolOutputs);
           }
 
-          const filters = refresh ? {} : await extractFiltersWithLangChain(message, existingRoles, existingDepartments, chatModel);
+          const filters = refresh ? null : await extractFiltersWithLangChain(message, existingRoles, existingDepartments, chatModel);
           
           sendStatus("Generating response...");
           // Send final metadata
