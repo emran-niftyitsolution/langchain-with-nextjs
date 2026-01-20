@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
         defaultQuery: { "api-version": apiVersion },
         defaultHeaders: { "api-key": apiKey },
       },
+      temperature: 0.7,
     });
 
     const tools = [
