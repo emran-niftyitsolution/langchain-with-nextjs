@@ -17,9 +17,10 @@ export interface AIAction {
 interface AIChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onFilterApply: (filters: Partial<FilterState>) => void;
+  onFilterApply: (filters: Partial<FilterState>, shouldReset?: boolean) => void;
   onAction?: (action: AIAction) => void;
   onRefresh?: () => void;
+  currentFilters?: FilterState;
 }
 
 export default function AIChatPanel({
@@ -28,6 +29,7 @@ export default function AIChatPanel({
   onFilterApply,
   onAction,
   onRefresh,
+  currentFilters,
 }: AIChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>(() => {
     // Initialize from localStorage directly to avoid race condition
@@ -93,7 +95,8 @@ export default function AIChatPanel({
         },
         body: JSON.stringify({ 
           message: input,
-          history: messages.slice(-20)
+          history: messages.slice(-20),
+          currentFilters: currentFilters
         }),
       });
 
@@ -132,7 +135,7 @@ export default function AIChatPanel({
               setStatus(data.status);
             }
             if (data.metadata) {
-              if (data.filters) onFilterApply(data.filters);
+              if (data.filters) onFilterApply(data.filters, data.shouldReset);
               if (data.refresh && onRefresh) onRefresh();
               metadataParsed = true;
               setStatus(""); // Clear status when content starts

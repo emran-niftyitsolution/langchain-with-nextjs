@@ -61,11 +61,12 @@ const filterSchema = z.object({
   maxAge: z.string().optional().describe("Maximum age (as string)"),
   sortBy: z.enum(['name', 'email', 'age', 'role', 'department', 'createdAt']).optional().describe("Field to sort by"),
   sortOrder: z.enum(['asc', 'desc']).optional().describe("Sort direction"),
+  shouldReset: z.boolean().optional().describe("Whether to clear existing filters before applying these (use if the new request conflicts with or replaces the current context)"),
 });
 
 const filterParser = StructuredOutputParser.fromZodSchema(filterSchema);
 
-async function extractFiltersWithLangChain(message: string, existingRoles: string[], existingDepartments: string[], model: ChatOpenAI) {
+async function extractFiltersWithLangChain(message: string, existingRoles: string[], existingDepartments: string[], currentFilters: any, model: ChatOpenAI) {
   try {
     const prompt = `
 # ROLE: SEARCH FILTER EXTRACTION SPECIALIST
@@ -74,17 +75,17 @@ Extract structured search criteria from user messages for a database lookup.
 # SYSTEM CONTEXT:
 - Available Roles: [${existingRoles.join(", ")}]
 - Available Departments: [${existingDepartments.join(", ")}]
+- Current Filters: ${JSON.stringify(currentFilters || {})}
 
-# EXTRACTION LOGIC (NEGATIVE CONSTRAINTS):
-1. **Intent Gate:** If the message is a command to CREATE, UPDATE, or DELETE (e.g., "Change...", "Delete...", "Add...", "Set..."), extraction MUST result in an empty object {}.
-2. **Explicit Only:** Only extract filters for values explicitly provided.
-3. **Normalization:** Map user roles/depts to the "Available" list if they are close synonyms.
+# EXTRACTION LOGIC:
+1. **Intent Gate:** If the message is a command to CREATE, UPDATE, or DELETE, extraction MUST result in an empty object {}.
+2. **Conflict Detection:** Analyze the "Current Filters". If the new search request logically replaces or conflicts with them (e.g., searching for a different user name, a different role without saying "also", or starting a clearly new search topic), set "shouldReset": true.
+3. **Normalization:** Map user roles/depts to the "Available" list.
 
 # FEW-SHOT EXAMPLES:
-- User: "Find active admins in HR" -> { "role": ["Admin"], "department": ["HR"] }
-- User: "Whos over age 50?" -> { "minAge": "50" }
-- User: "Sort by recently added" -> { "sortBy": "createdAt", "sortOrder": "desc" }
-- User: "Update John's role" -> {} (Command detected)
+- User: "Find active admins" -> { "role": ["Admin"], "shouldReset": true }
+- User: "Whos over age 50?" (when Current Filters has name="John") -> { "minAge": "50", "shouldReset": true }
+- User: "Also include HR department" (when Current Filters has role=["Developer"]) -> { "department": ["HR"], "shouldReset": false }
 
 # MESSAGE FOR ANALYSIS:
 "{message}"
@@ -99,7 +100,12 @@ Extract structured search criteria from user messages for a database lookup.
     const content = typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
     const parsed = await filterParser.parse(content);
     
-    return Object.keys(parsed).length === 0 ? null : parsed;
+    // Return null if empty to avoid triggering filter updates in the UI
+    if (Object.keys(parsed).length === 0) return null;
+    
+    // Extract shouldReset and clean the filters object
+    const { shouldReset, ...filters } = parsed;
+    return { filters: Object.keys(filters).length > 0 ? filters : {}, shouldReset: !!shouldReset };
   } catch (e) {
     console.error("Filter extraction error:", e);
     return null;
@@ -151,7 +157,7 @@ async function handleCreate(userData: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history } = await request.json();
+    const { message, history, currentFilters } = await request.json();
     if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
     const apiKey = process.env.NEXT_PUBLIC_AZURE_OPENAI_API_KEY;
@@ -306,11 +312,13 @@ export async function POST(request: NextRequest) {
             messages.push(...toolOutputs);
           }
 
-          const filters = refresh ? null : await extractFiltersWithLangChain(message, existingRoles, existingDepartments, chatModel);
+          const filterResult = refresh ? null : await extractFiltersWithLangChain(message, existingRoles, existingDepartments, currentFilters, chatModel);
+          const filters = filterResult?.filters;
+          const shouldReset = filterResult?.shouldReset;
           
           sendStatus("Generating response...");
           // Send final metadata
-          controller.enqueue(encoder.encode(JSON.stringify({ filters, refresh, metadata: true }) + "\n"));
+          controller.enqueue(encoder.encode(JSON.stringify({ filters, shouldReset, refresh, metadata: true }) + "\n"));
 
           // Final streaming of AI content
           const aiStream = await chatModel.stream(messages);

@@ -20,8 +20,22 @@ export default function Home() {
     maxAge: "",
   });
 
-  const handleFilterApply = (newFilters: Partial<FilterState>) => {
-    setFilters((prev) => ({ ...prev, ...newFilters }));
+  const handleFilterApply = (newFilters: Partial<FilterState>, shouldReset: boolean = false) => {
+    setFilters((prev) => {
+      if (shouldReset) {
+        return {
+          name: "",
+          email: "",
+          phone: "",
+          role: [],
+          department: [],
+          minAge: "",
+          maxAge: "",
+          ...newFilters
+        };
+      }
+      return ({ ...prev, ...newFilters });
+    });
   };
 
   const handleAIPanelRefresh = () => {
@@ -51,6 +65,7 @@ export default function Home() {
           onFilterApply={handleFilterApply}
           onAction={setPendingAction}
           onRefresh={handleAIPanelRefresh}
+          currentFilters={filters}
         />
       </main>
     </div>
