@@ -29,33 +29,32 @@ export default function AIChatPanel({
   onAction,
   onRefresh,
 }: AIChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Hi! I can help you manage users. Try asking: 'Show all users with age max 40' or 'Update Daryl Tanner's age to 53'",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Initialize from localStorage directly to avoid race condition
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("ai_chat_history");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error("Failed to parse chat history");
+        }
+      }
+    }
+    return [
+      {
+        role: "assistant",
+        content: "Hi! I can help you manage users. Try asking: 'Show all users with age max 40' or 'Update Daryl Tanner's age to 53'",
+      },
+    ];
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load history from localStorage
+  // Save history to localStorage whenever messages change
   useEffect(() => {
-    const saved = localStorage.getItem("ai_chat_history");
-    if (saved) {
-      try {
-        setMessages(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse chat history");
-      }
-    }
-  }, []);
-
-  // Save history to localStorage
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem("ai_chat_history", JSON.stringify(messages.slice(-20)));
-    }
+    localStorage.setItem("ai_chat_history", JSON.stringify(messages.slice(-100)));
   }, [messages]);
 
   const clearChat = () => {
@@ -92,7 +91,7 @@ export default function AIChatPanel({
         },
         body: JSON.stringify({ 
           message: input,
-          history: messages.slice(-10) // Send last 10 messages (roughly 5 chats)
+          history: messages.slice(-100) // Send last 100 messages
         }),
       });
 

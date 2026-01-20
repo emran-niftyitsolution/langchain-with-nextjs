@@ -14,8 +14,8 @@ You have tools to manage users directly in the database.
 
 ### CRITICAL RULES
 1. NEVER HALLUCINATE: Only perform actions on users that actually exist. Do not make up user details, IDs, or search results.
-2. SEEK CONFIRMATION: If a user's request is ambiguous or if you are unsure about which user to target, ALWAYS ask for clarification or confirmation before proceeding.
-3. BE PRECISE: If search results return multiple users, do not guess. Ask the user to be more specific (e.g., provide an email or full name).
+2. SEEK CONFIRMATION: If a user's request is ambiguous or if you are unsure about which user to target, ALWAYS ask for clarification or confirmation before proceeding. You can now use 'email' in tools to target a specific user if names conflict.
+3. BE PRECISE: If search results return multiple users, ask the user for their email and use it in the 'email' parameter of the tools to uniquely identify them.
 4. ONLY VALID DATA: Do not guess user information like emails or roles. If a required field is missing for creation, ask the user.
 
 When a user asks to modify data, use the appropriate tool. 
@@ -27,12 +27,15 @@ Valid sort fields: name, email, age, role, department, createdAt.
 
 Always be helpful and conversational.`;
 
-async function handleUpdate(nameQuery: string, updates: any) {
+async function handleUpdate(nameQuery: string, updates: any, email?: string) {
   try {
     await connectDB();
-    const users = await User.find({ name: { $regex: nameQuery, $options: "i" } });
-    if (users.length === 0) return `Error: No user found matching "${nameQuery}".`;
-    if (users.length > 1) return `Error: Multiple users found: ${users.map(u => u.name).join(", ")}. Please be more specific.`;
+    // If email is provided, use it for exact match. Otherwise use name regex.
+    const query = email ? { email: email } : { name: { $regex: nameQuery, $options: "i" } };
+    const users = await User.find(query);
+    
+    if (users.length === 0) return `Error: No user found matching ${email || `"${nameQuery}"`}.`;
+    if (users.length > 1) return `Error: Multiple users found: ${users.map(u => u.name).join(", ")}. Please provide an email for precision.`;
     
     const user = await User.findByIdAndUpdate(users[0]._id, updates, { new: true, runValidators: true });
     return `Success: Updated ${user.name}.`;
@@ -41,12 +44,14 @@ async function handleUpdate(nameQuery: string, updates: any) {
   }
 }
 
-async function handleDelete(nameQuery: string) {
+async function handleDelete(nameQuery: string, email?: string) {
   try {
     await connectDB();
-    const users = await User.find({ name: { $regex: nameQuery, $options: "i" } });
-    if (users.length === 0) return `Error: No user found matching "${nameQuery}".`;
-    if (users.length > 1) return `Error: Multiple users found: ${users.map(u => u.name).join(", ")}. Please be more specific.`;
+    const query = email ? { email: email } : { name: { $regex: nameQuery, $options: "i" } };
+    const users = await User.find(query);
+    
+    if (users.length === 0) return `Error: No user found matching ${email || `"${nameQuery}"`}.`;
+    if (users.length > 1) return `Error: Multiple users found: ${users.map(u => u.name).join(", ")}. Please provide an email for precision.`;
     
     await User.findByIdAndDelete(users[0]._id);
     return `Success: Deleted user ${users[0].name}.`;
@@ -109,6 +114,7 @@ export async function POST(request: NextRequest) {
             type: "object",
             properties: {
               name_query: { type: "string" },
+              email: { type: "string", description: "Optional email for exact identification if multiple users have the same name." },
               updates: {
                 type: "object",
                 properties: {
@@ -134,7 +140,8 @@ export async function POST(request: NextRequest) {
           parameters: {
             type: "object",
             properties: {
-              name_query: { type: "string" }
+              name_query: { type: "string" },
+              email: { type: "string", description: "Optional email for exact identification if multiple users have the same name." }
             },
             required: ["name_query"]
           }
@@ -189,9 +196,9 @@ export async function POST(request: NextRequest) {
       for (const toolCall of result.tool_calls) {
         let toolOutput = "";
         if (toolCall.name === "update_user") {
-          toolOutput = await handleUpdate(toolCall.args.name_query, toolCall.args.updates);
+          toolOutput = await handleUpdate(toolCall.args.name_query, toolCall.args.updates, toolCall.args.email);
         } else if (toolCall.name === "delete_user") {
-          toolOutput = await handleDelete(toolCall.args.name_query);
+          toolOutput = await handleDelete(toolCall.args.name_query, toolCall.args.email);
         } else if (toolCall.name === "create_user") {
           toolOutput = await handleCreate(toolCall.args);
         }

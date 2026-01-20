@@ -126,7 +126,7 @@ export default function UsersPage({
 
       {/* Filters Section - Drawer on mobile, Sidebar on desktop */}
       <div className={`
-        fixed md:relative inset-y-0 left-0 z-50 md:z-auto
+        fixed md:relative md:inset-y-auto md:left-auto inset-y-0 left-0 z-50 md:z-auto
         w-80 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 
         transform ${isFilterDrawerOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
         transition-transform duration-300 ease-in-out
